@@ -42,9 +42,11 @@ The application uses a simple data model with meaningful identifiers:
    - Schedule
    - Maximum number of participants allowed
    - List of student emails who are signed up
+   - Optional `eligible_grades` list and ISO-8601 `signup_deadline`
 
 2. **Students** - Uses email as identifier:
    - Name
    - Grade level
 
 All data is stored in memory, which means data will be reset when the server restarts.
+Grade eligibility uses the grade supplied with the signup request; the app does not yet authenticate students or verify their grade.

@@ -20,6 +20,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const spotsLeft =
           details.max_participants - details.participants.length;
+        const eligibilityHTML = Array.isArray(details.eligible_grades)
+          ? `<p><strong>Eligible grades:</strong> ${details.eligible_grades.join(", ")}</p>`
+          : "";
+        const deadlineHTML = details.signup_deadline
+          ? `<p><strong>Signup deadline:</strong> ${details.signup_deadline}</p>`
+          : "";
 
         // Create participants HTML with delete icons instead of bullet points
         const participantsHTML =
@@ -41,7 +47,9 @@ document.addEventListener("DOMContentLoaded", () => {
           <h4>${name}</h4>
           <p>${details.description}</p>
           <p><strong>Schedule:</strong> ${details.schedule}</p>
-          <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
+          <p><strong>Availability:</strong> ${Math.max(0, spotsLeft)} spots left</p>
+          ${eligibilityHTML}
+          ${deadlineHTML}
           <div class="participants-container">
             ${participantsHTML}
           </div>
@@ -116,12 +124,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const email = document.getElementById("email").value;
     const activity = document.getElementById("activity").value;
-
+    const grade = document.getElementById("grade").value;
+    const signupParams = new URLSearchParams({ email });
+    if (grade) {
+      signupParams.set("grade", grade);
+    }
     try {
       const response = await fetch(
         `/activities/${encodeURIComponent(
           activity
-        )}/signup?email=${encodeURIComponent(email)}`,
+        )}/signup?${signupParams.toString()}`,
         {
           method: "POST",
         }
