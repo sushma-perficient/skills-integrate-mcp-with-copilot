@@ -21,9 +21,13 @@ class SignupTests(unittest.TestCase):
         app_module.activities = self.original_activities
 
     def test_rejects_signup_when_activity_is_full(self):
-        app_module.activities["Limited Activity"]["participants"].append("second@mergington.edu")
+        app_module.activities["Limited Activity"]["participants"].append(
+            "second@mergington.edu"
+        )
         with self.assertRaises(HTTPException) as error:
-            app_module.signup_for_activity("Limited Activity", "new@mergington.edu")
+            app_module.signup_for_activity(
+                "Limited Activity", "new@mergington.edu"
+            )
 
         self.assertEqual(error.exception.status_code, 409)
         self.assertEqual(
@@ -35,7 +39,9 @@ class SignupTests(unittest.TestCase):
         app_module.activities["Limited Activity"]["eligible_grades"] = [10, 11]
 
         with self.assertRaises(HTTPException) as error:
-            app_module.signup_for_activity("Limited Activity", "new@mergington.edu", grade=9)
+            app_module.signup_for_activity(
+                "Limited Activity", "new@mergington.edu", grade=9
+            )
 
         self.assertEqual(error.exception.status_code, 403)
 
@@ -46,14 +52,21 @@ class SignupTests(unittest.TestCase):
             "Limited Activity", "new@mergington.edu", grade=10
         )
 
-        self.assertIn("new@mergington.edu", app_module.activities["Limited Activity"]["participants"])
-        self.assertEqual(result["message"], "Signed up new@mergington.edu for Limited Activity")
+        self.assertIn(
+            "new@mergington.edu",
+            app_module.activities["Limited Activity"]["participants"],
+        )
+        self.assertEqual(
+            result["message"], "Signed up new@mergington.edu for Limited Activity"
+        )
 
     def test_requires_grade_when_activity_has_grade_restrictions(self):
         app_module.activities["Limited Activity"]["eligible_grades"] = [10, 11]
 
         with self.assertRaises(HTTPException) as error:
-            app_module.signup_for_activity("Limited Activity", "new@mergington.edu")
+            app_module.signup_for_activity(
+                "Limited Activity", "new@mergington.edu"
+            )
 
         self.assertEqual(error.exception.status_code, 400)
 
@@ -62,7 +75,9 @@ class SignupTests(unittest.TestCase):
         app_module.activities["Limited Activity"]["signup_deadline"] = deadline.isoformat()
 
         with self.assertRaises(HTTPException) as error:
-            app_module.signup_for_activity("Limited Activity", "new@mergington.edu")
+            app_module.signup_for_activity(
+                "Limited Activity", "new@mergington.edu"
+            )
 
         self.assertEqual(error.exception.status_code, 409)
 
