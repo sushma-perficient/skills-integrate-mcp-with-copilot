@@ -6,10 +6,12 @@ for extracurricular activities at Mergington High School.
 """
 
 from fastapi import FastAPI, HTTPException
+from datetime import datetime, timezone
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
 import os
 from pathlib import Path
+from threading import Lock
 
 app = FastAPI(title="Mergington High School API",
               description="API for viewing and signing up for extracurricular activities")
@@ -18,6 +20,8 @@ app = FastAPI(title="Mergington High School API",
 current_dir = Path(__file__).parent
 app.mount("/static", StaticFiles(directory=os.path.join(Path(__file__).parent,
           "static")), name="static")
+
+signup_lock = Lock()
 
 # In-memory activity database
 activities = {
@@ -89,24 +93,46 @@ def get_activities():
 
 
 @app.post("/activities/{activity_name}/signup")
-def signup_for_activity(activity_name: str, email: str):
+def signup_for_activity(activity_name: str, email: str, grade: int | None = None):
     """Sign up a student for an activity"""
     # Validate activity exists
     if activity_name not in activities:
         raise HTTPException(status_code=404, detail="Activity not found")
 
-    # Get the specific activity
-    activity = activities[activity_name]
+    with signup_lock:
+        activity = activities[activity_name]
 
-    # Validate student is not already signed up
-    if email in activity["participants"]:
-        raise HTTPException(
-            status_code=400,
-            detail="Student is already signed up"
-        )
+        if email in activity["participants"]:
+            raise HTTPException(
+                status_code=400,
+                detail="Student is already signed up"
+            )
 
-    # Add student
-    activity["participants"].append(email)
+        if len(activity["participants"]) >= activity["max_participants"]:
+            raise HTTPException(status_code=409, detail="Activity is full")
+
+        signup_deadline = activity.get("signup_deadline")
+        if signup_deadline:
+            deadline = datetime.fromisoformat(signup_deadline.replace("Z", "+00:00"))
+            if deadline.tzinfo is None:
+                deadline = deadline.replace(tzinfo=timezone.utc)
+            if datetime.now(timezone.utc) >= deadline:
+                raise HTTPException(status_code=409, detail="Signup deadline has passed")
+
+        eligible_grades = activity.get("eligible_grades")
+        if eligible_grades is not None:
+            if grade is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Grade level is required for this activity"
+                )
+            if grade not in eligible_grades:
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"This activity is only open to grades: {', '.join(map(str, eligible_grades))}"
+                )
+
+        activity["participants"].append(email)
     return {"message": f"Signed up {email} for {activity_name}"}
 
 
@@ -120,13 +146,12 @@ def unregister_from_activity(activity_name: str, email: str):
     # Get the specific activity
     activity = activities[activity_name]
 
-    # Validate student is signed up
-    if email not in activity["participants"]:
-        raise HTTPException(
-            status_code=400,
-            detail="Student is not signed up for this activity"
-        )
+    with signup_lock:
+        if email not in activity["participants"]:
+            raise HTTPException(
+                status_code=400,
+                detail="Student is not signed up for this activity"
+            )
 
-    # Remove student
-    activity["participants"].remove(email)
+        activity["participants"].remove(email)
     return {"message": f"Unregistered {email} from {activity_name}"}
